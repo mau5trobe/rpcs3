@@ -763,13 +763,13 @@
                     </item>
                     <item>
                      <layout class="QHBoxLayout" name="minimumScalableDimensionLayoutBottom" stretch="1,0">
-                      <item>
-                       <widget class="QLabel" name="minimumScalableDimensionVal">
-                        <property name="text">
-                         <string>1x1</string>
+                      <item alignment="Qt::AlignmentFlag::AlignHCenter">
+                       <widget class="QSpinBox" name="minimumScalableDimensionValue">
+                        <property name="accessibleName">
+                         <string>Resolution Scale Threshold</string>
                         </property>
-                        <property name="alignment">
-                         <set>Qt::AlignmentFlag::AlignCenter</set>
+                        <property name="keyboardTracking">
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>

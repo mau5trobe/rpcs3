@@ -688,26 +688,16 @@ settings_dialog::settings_dialog(std::shared_ptr<gui_settings> gui_settings, std
 
 	m_emu_settings->EnhanceSlider(ui->minimumScalableDimension, emu_settings_type::MinimumScalableDimension);
 	SubscribeTooltip(ui->gb_minimumScalableDimension, tooltips.settings.minimum_scalable_dimension);
-	// rename label texts to fit current state of Minimum Scalable Dimension
 	const int minimum_scalable_dimension_def = stoi(m_emu_settings->GetSettingDefault(emu_settings_type::MinimumScalableDimension));
-	const auto min_scalable_dimension = [minimum_scalable_dimension_def](int dim)
-	{
-		if (dim == minimum_scalable_dimension_def)
-		{
-			return tr("%1x%1 (Default)", "Minimum scalable dimension").arg(dim);
-		}
-		return tr("%1x%1", "Minimum scalable dimension").arg(dim);
-	};
 	ui->minimumScalableDimension->setPageStep(64);
 	ui->minimumScalableDimensionMin->setText(QString::number(ui->minimumScalableDimension->minimum()));
 	ui->minimumScalableDimensionMin->setFixedWidth(gui::utils::get_label_width(QStringLiteral("00")));
 	ui->minimumScalableDimensionMax->setText(QString::number(ui->minimumScalableDimension->maximum()));
 	ui->minimumScalableDimensionMax->setFixedWidth(gui::utils::get_label_width(QStringLiteral("0000")));
-	ui->minimumScalableDimensionVal->setText(min_scalable_dimension(ui->minimumScalableDimension->value()));
-	connect(ui->minimumScalableDimension, &QSlider::valueChanged, [min_scalable_dimension, this](int value)
-	{
-		ui->minimumScalableDimensionVal->setText(min_scalable_dimension(value));
-	});
+	ui->minimumScalableDimensionValue->setRange(ui->minimumScalableDimension->minimum(), ui->minimumScalableDimension->maximum());
+	ui->minimumScalableDimensionValue->setValue(ui->minimumScalableDimension->value());
+	connect(ui->minimumScalableDimension, &QSlider::valueChanged, ui->minimumScalableDimensionValue, &QSpinBox::setValue);
+	connect(ui->minimumScalableDimensionValue, &QSpinBox::valueChanged, ui->minimumScalableDimension, &QSlider::setValue);
 	connect(ui->minimumScalableDimensionReset, &QAbstractButton::clicked, [minimum_scalable_dimension_def, this]()
 	{
 		ui->minimumScalableDimension->setValue(minimum_scalable_dimension_def);
