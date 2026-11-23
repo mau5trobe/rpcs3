@@ -364,7 +364,10 @@ void VKVertexDecompilerThread::insertMainStart(std::stringstream& OS)
 	properties2.require_clip_plane_functions = true;
 	properties2.emulate_zclip_transform = true;
 	properties2.emulate_depth_clip_only = vk::g_render_device->get_shader_types_support().allow_float64;
-	properties2.require_explicit_invariance = (vk::is_NVIDIA(vk::get_driver_vendor()) && g_cfg.video.shader_precision != gpu_preset_level::low);
+	const auto driver_vendor = vk::get_driver_vendor();
+	// MoltenVK uses invariant gl_Position to request consistent position calculations across Metal vertex shaders.
+	properties2.require_explicit_invariance = (vk::is_NVIDIA(driver_vendor) || driver_vendor == vk::driver_vendor::MVK) &&
+		g_cfg.video.shader_precision != gpu_preset_level::low;
 	properties2.require_instanced_render = !!(m_prog.ctrl & RSX_SHADER_CONTROL_INSTANCED_CONSTANTS);
 	properties2.emulate_depth_range = !!(m_prog.ctrl & RSX_SHADER_CONTROL_EMULATE_DEPTH_RANGE);
 
