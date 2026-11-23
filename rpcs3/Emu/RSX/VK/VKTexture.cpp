@@ -466,7 +466,13 @@ namespace vk
 		dst_copy.imageOffset = { dst_rect.x, dst_rect.y, dst_rect.z };
 		dst_copy.imageSubresource = { dst->aspect() & dst_transfer_mask, mip_layers.dst_mip_level, mip_layers.dst_layer, mip_layers.layer_count };
 
-		const auto src_texel_size = vk::get_format_texel_width(src->info.format);
+		const auto src_format = src->format();
+		const auto src_texel_size = vk::get_format_texel_width(src_format);
+		// These formats are packed by a compute shader in copy_image_to_buffer.
+		const bool compute_readback = src_format == VK_FORMAT_D32_SFLOAT ||
+			src_format == VK_FORMAT_D24_UNORM_S8_UINT || src_format == VK_FORMAT_D32_SFLOAT_S8_UINT;
+		const auto readback_stage = compute_readback ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT;
+		const auto readback_write_access = compute_readback ? VK_ACCESS_SHADER_WRITE_BIT : VK_ACCESS_TRANSFER_WRITE_BIT;
 		vk::buffer* scratch_buf = nullptr;
 
 		for (u32 remaining_levels = mip_layers.mipmap_count; remaining_levels > 0; remaining_levels--)
@@ -497,8 +503,8 @@ namespace vk
 			if (needs_shuffle)
 			{
 				insert_buffer_memory_barrier(cmd, scratch_buf->value, 0, src_length,
-					VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-					VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+					readback_stage, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+					readback_write_access, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
 
 				vk::cs_shuffle_base* shuffle_kernel = nullptr;
 				if (src_convert.first && dst_convert.first)
@@ -534,8 +540,8 @@ namespace vk
 			if (require_rw_barrier)
 			{
 				insert_buffer_memory_barrier(cmd, scratch_buf->value, 0, src_length,
-					VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-					VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+					readback_stage, VK_PIPELINE_STAGE_TRANSFER_BIT,
+					readback_write_access, VK_ACCESS_TRANSFER_READ_BIT);
 			}
 
 			vk::copy_buffer_to_image(cmd, scratch_buf, dst, dst_copy);
