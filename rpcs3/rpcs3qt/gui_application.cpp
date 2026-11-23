@@ -52,6 +52,9 @@
 #include <QTextDocument>
 #include <QStyleFactory>
 #include <QStyleHints>
+#ifdef __APPLE__
+#include <QProxyStyle>
+#endif
 
 #include <clocale>
 
@@ -1191,6 +1194,44 @@ void gui_application::StopPlaytime()
 	m_timer_playtime.invalidate();
 }
 
+#ifdef __APPLE__
+class macos_item_check_style final : public QProxyStyle
+{
+public:
+	using QProxyStyle::QProxyStyle;
+
+	void drawPrimitive(PrimitiveElement element, const QStyleOption* option, QPainter* painter, const QWidget* widget) const override
+	{
+		// The native style can leave item-view checkboxes invisible under Liquid Glass.
+		if (element == PE_IndicatorItemViewItemCheck && m_fusion)
+		{
+			m_fusion->drawPrimitive(element, option, painter, widget);
+			return;
+		}
+
+		QProxyStyle::drawPrimitive(element, option, painter, widget);
+	}
+
+private:
+	std::unique_ptr<QStyle> m_fusion{ QStyleFactory::create(QStringLiteral("Fusion")) };
+};
+#endif
+
+static QStyle* create_gui_style(const QString& key)
+{
+	QStyle* style = QStyleFactory::create(key);
+#ifdef __APPLE__
+	if (__builtin_available(macOS 26.0, *))
+	{
+		if (style && style->name() == QStringLiteral("macos"))
+		{
+			return new macos_item_check_style(style);
+		}
+	}
+#endif
+	return style;
+}
+
 /*
 * Handle a request to change the stylesheet based on the current entry in the settings.
 */
@@ -1245,7 +1286,7 @@ void gui_application::OnChangeStyleSheetRequest()
 	}
 
 	// Reset style to default before doing anything else, or we will get unexpected effects in custom stylesheets.
-	if (QStyle* style = QStyleFactory::create(m_default_style))
+	if (QStyle* style = create_gui_style(m_default_style))
 	{
 		setStyle(style);
 	}
@@ -1280,7 +1321,7 @@ void gui_application::OnChangeStyleSheetRequest()
 	}
 	else if (const QString native_style = match_native_style(); !native_style.isEmpty())
 	{
-		if (QStyle* style = QStyleFactory::create(native_style))
+		if (QStyle* style = create_gui_style(native_style))
 		{
 			gui_log.notice("Using native style '%s'", native_style);
 			setStyleSheet("/* none */");
